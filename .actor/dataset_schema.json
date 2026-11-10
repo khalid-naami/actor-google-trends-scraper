@@ -1,0 +1,44 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "type": "object",
+    "properties": {
+      "term": {
+        "type": "string",
+        "description": "Searched keyword or trend term"
+      },
+      "geo": {
+        "type": "string",
+        "description": "Country or regional geographic scope"
+      },
+      "timeframe": {
+        "type": "string",
+        "description": "Selected time range (e.g. today 12-m, now 7-d)"
+      },
+      "category": {
+        "type": "integer",
+        "description": "Google Trends category ID"
+      },
+      "interestOverTime": {
+        "type": "array",
+        "description": "Historical timeline of search volume interest scores (0-100)"
+      },
+      "interestByRegion": {
+        "type": "array",
+        "description": "Geographical search interest distribution by region or country"
+      },
+      "relatedQueries": {
+        "type": "object",
+        "description": "Top and Rising breakout related search queries"
+      },
+      "relatedTopics": {
+        "type": "object",
+        "description": "Top and Rising breakout related entities and topics"
+      },
+      "scrapedAt": {
+        "type": "string",
+        "description": "Timestamp of extraction"
+      }
+    }
+  }
+}
