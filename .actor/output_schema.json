@@ -1,0 +1,25 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "totalTerms": {
+      "type": "integer",
+      "title": "Total Search Terms"
+    },
+    "totalRecordsScraped": {
+      "type": "integer",
+      "title": "Total Trend Records Extracted"
+    },
+    "geo": {
+      "type": "string",
+      "title": "Geographical Filter"
+    },
+    "timeframe": {
+      "type": "string",
+      "title": "Timeframe"
+    },
+    "status": {
+      "type": "string",
+      "title": "Run Status"
+    }
+  }
+}
