@@ -1,0 +1,92 @@
+{
+  "title": "Google Trends Scraper Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "searchTerms": {
+      "title": "Search Terms / Keywords",
+      "type": "array",
+      "description": "List of keywords or topics to analyze on Google Trends (e.g. 'Artificial Intelligence', 'Bitcoin', 'Electric Cars').",
+      "prefill": [
+        "Artificial Intelligence",
+        "ChatGPT"
+      ],
+      "editor": "json"
+    },
+    "geo": {
+      "title": "Geographic Region",
+      "type": "string",
+      "description": "Country code (e.g. 'US', 'GB', 'DE', 'FR', 'SA', 'CA') or leave empty for Worldwide.",
+      "default": "",
+      "editor": "textfield"
+    },
+    "timeframe": {
+      "title": "Timeframe",
+      "type": "string",
+      "description": "Historical duration to analyze.",
+      "default": "today 12-m",
+      "editor": "select",
+      "enum": [
+        "now 1-d",
+        "now 7-d",
+        "today 1-m",
+        "today 3-m",
+        "today 12-m",
+        "today 5-y",
+        "all"
+      ],
+      "enumTitles": [
+        "Past 24 Hours",
+        "Past 7 Days",
+        "Past 30 Days",
+        "Past 90 Days",
+        "Past 12 Months (Default)",
+        "Past 5 Years",
+        "All Time (2004 - Present)"
+      ]
+    },
+    "hl": {
+      "title": "Interface Language",
+      "type": "string",
+      "description": "Language code for query and topic names (e.g. 'en', 'es', 'fr', 'de', 'ar').",
+      "default": "en",
+      "editor": "textfield"
+    },
+    "extractInterestOverTime": {
+      "title": "Extract Interest Over Time",
+      "type": "boolean",
+      "description": "Extract historical timeline interest scores (0-100).",
+      "default": true
+    },
+    "extractInterestByRegion": {
+      "title": "Extract Interest By Region",
+      "type": "boolean",
+      "description": "Extract regional sub-entity interest distribution.",
+      "default": true
+    },
+    "extractRelatedQueries": {
+      "title": "Extract Related Queries",
+      "type": "boolean",
+      "description": "Extract Top and Rising (Breakout) related searches.",
+      "default": true
+    },
+    "extractRelatedTopics": {
+      "title": "Extract Related Topics",
+      "type": "boolean",
+      "description": "Extract Top and Rising related topic categories.",
+      "default": true
+    },
+    "proxyConfiguration": {
+      "title": "Proxy Configuration",
+      "type": "object",
+      "description": "Use Apify Proxy to bypass rate-limits and regional blocks.",
+      "default": {
+        "useApifyProxy": true
+      },
+      "editor": "proxy"
+    }
+  },
+  "required": [
+    "searchTerms"
+  ]
+}
