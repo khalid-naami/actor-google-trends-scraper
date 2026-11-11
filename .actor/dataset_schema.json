@@ -4,39 +4,39 @@
     "type": "object",
     "properties": {
       "term": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Searched keyword or trend term"
       },
       "geo": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Country or regional geographic scope"
       },
       "timeframe": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Selected time range (e.g. today 12-m, now 7-d)"
       },
       "category": {
-        "type": "integer",
+        "type": ["integer", "null"],
         "description": "Google Trends category ID"
       },
       "interestOverTime": {
-        "type": "array",
+        "type": ["array", "null"],
         "description": "Historical timeline of search volume interest scores (0-100)"
       },
       "interestByRegion": {
-        "type": "array",
+        "type": ["array", "null"],
         "description": "Geographical search interest distribution by region or country"
       },
       "relatedQueries": {
-        "type": "object",
+        "type": ["object", "null"],
         "description": "Top and Rising breakout related search queries"
       },
       "relatedTopics": {
-        "type": "object",
+        "type": ["object", "null"],
         "description": "Top and Rising breakout related entities and topics"
       },
       "scrapedAt": {
-        "type": "string",
+        "type": ["string", "null"],
         "description": "Timestamp of extraction"
       }
     }
