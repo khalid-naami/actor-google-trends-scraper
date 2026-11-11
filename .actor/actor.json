@@ -2,19 +2,15 @@
   "actorSpecification": 1,
   "name": "google-trends-scraper",
   "title": "Google Trends Scraper (Interest Over Time, Region & Related Queries)",
-  "description": "Scrape Google Trends search interest over time, regional breakdown, breakout related queries, and trending topics worldwide or by country.",
+  "description": "Google Trends Intelligence Scraper: Extract interest over time time-series, subregion breakdowns, breakout related search queries, and top rising search topics globally or by country. Designed for real-time market research, consumer demand forecasting, and viral search trend discovery analytics.",
   "version": "1.0",
   "meta": {
     "templateId": "js-crawlee-playwright"
   },
+  "dockerfile": "../Dockerfile",
   "input": "./input_schema.json",
-  "dataset": "./dataset_schema.json",
-  "output": "./output_schema.json",
   "storages": {
-    "dataset": {
-      "actorSpecification": 1,
-      "title": "Google Trends Dataset",
-      "description": "Extracted Google Trends time-series, geo breakdown, and related keywords."
-    }
-  }
+    "dataset": "./dataset_schema.json"
+  },
+  "output": "./output_schema.json"
 }
