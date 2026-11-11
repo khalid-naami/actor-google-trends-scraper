@@ -120,28 +120,61 @@ export function parsePlaywrightProxy(proxyUrl) {
 }
 
 /**
+ * Update a Map-based cookie jar from HTTP Set-Cookie response headers
+ */
+export function updateCookieJar(jar, setCookieHeader) {
+    if (!jar || !(jar instanceof Map) || !setCookieHeader) return jar;
+    const cookieArr = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+    for (const raw of cookieArr) {
+        const pair = String(raw).split(';')[0].trim();
+        const eqIdx = pair.indexOf('=');
+        if (eqIdx > 0) {
+            const name = pair.slice(0, eqIdx).trim();
+            const value = pair.slice(eqIdx + 1).trim();
+            if (name) jar.set(name, value);
+        }
+    }
+    return jar;
+}
+
+/**
+ * Serialize a Map cookie jar or pass through a cookie string
+ */
+export function formatCookieJar(cookieOrJar) {
+    if (!cookieOrJar) return '';
+    if (typeof cookieOrJar === 'string') return cookieOrJar;
+    if (cookieOrJar instanceof Map) {
+        return [...cookieOrJar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
+    }
+    return '';
+}
+
+/**
  * Fetch NID/session cookies from Google Trends landing page
  */
-export async function fetchTrendsCookies(got, hl = 'en', proxyUrl = undefined) {
+export async function fetchTrendsCookies(got, hl = 'en', proxyUrl = undefined, cookieJar = undefined, sessionToken = undefined) {
     const options = {
         headers: {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'accept-language': `${hl},en-US;q=0.9,en;q=0.8`,
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         },
         timeout: { request: 15000 },
         retry: { limit: 1 },
         throwHttpErrors: false,
     };
 
-    if (proxyUrl) {
-        options.proxyUrl = proxyUrl;
-    }
+    if (proxyUrl) options.proxyUrl = proxyUrl;
+    if (sessionToken) options.sessionToken = sessionToken;
 
     const response = await got('https://trends.google.com/trends/', options);
-    const setCookieHeader = response.headers['set-cookie'];
-    if (!setCookieHeader) return '';
+    const setCookieHeader = response.headers?.['set-cookie'];
 
+    if (cookieJar instanceof Map) {
+        updateCookieJar(cookieJar, setCookieHeader);
+        return formatCookieJar(cookieJar);
+    }
+
+    if (!setCookieHeader) return '';
     const cookieArr = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
     return cookieArr.map((c) => c.split(';')[0]).filter(Boolean).join('; ');
 }
@@ -149,7 +182,7 @@ export async function fetchTrendsCookies(got, hl = 'en', proxyUrl = undefined) {
 /**
  * Request Explore tokens from Google Trends API
  */
-export async function fetchExploreTokens(got, keyword, geo = '', timeframe = 'today 12-m', hl = 'en', proxyUrl = undefined, cookieHeader = '') {
+export async function fetchExploreTokens(got, keyword, geo = '', timeframe = 'today 12-m', hl = 'en', proxyUrl = undefined, cookieOrJar = '', sessionToken = undefined) {
     const exploreUrl = 'https://trends.google.com/trends/api/explore';
 
     const requestPayload = {
@@ -173,9 +206,10 @@ export async function fetchExploreTokens(got, keyword, geo = '', timeframe = 'to
     const headers = {
         'accept': 'application/json, text/plain, */*',
         'accept-language': `${hl},en-US;q=0.9,en;q=0.8`,
-        'referer': `https://trends.google.com/trends/explore?q=${encodeURIComponent(keyword)}&geo=${encodeURIComponent(geo || '')}&date=${encodeURIComponent(timeframe)}`,
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'referer': `https://trends.google.com/trends/explore?q=${encodeURIComponent(keyword)}&geo=${encodeURIComponent(geo || '')}&date=${encodeURIComponent(timeframe)}&hl=${encodeURIComponent(hl)}`,
     };
+
+    const cookieHeader = formatCookieJar(cookieOrJar);
     if (cookieHeader) {
         headers.cookie = cookieHeader;
     }
@@ -188,13 +222,15 @@ export async function fetchExploreTokens(got, keyword, geo = '', timeframe = 'to
         throwHttpErrors: false,
     };
 
-    if (proxyUrl) {
-        options.proxyUrl = proxyUrl;
-    }
+    if (proxyUrl) options.proxyUrl = proxyUrl;
+    if (sessionToken) options.sessionToken = sessionToken;
 
     const response = await got(exploreUrl, options);
-    const parsed = parseGoogleTrendsJson(response.body);
+    if (cookieOrJar instanceof Map) {
+        updateCookieJar(cookieOrJar, response.headers?.['set-cookie']);
+    }
 
+    const parsed = parseGoogleTrendsJson(response.body);
     if (response.statusCode !== 200 || !parsed || !parsed.widgets) {
         throw new Error(`HTTP ${response.statusCode} or blocked explore response from Google Trends for "${keyword}" (geo="${geo || 'Worldwide'}")`);
     }
@@ -203,9 +239,9 @@ export async function fetchExploreTokens(got, keyword, geo = '', timeframe = 'to
 }
 
 /**
- * Fetch individual widget data (Timeseries, GeoMap, or Related Searches)
+ * Fetch individual widget data (Timeseries, GeoMap, or Related Searches) with 429 retry & cookie jar rotation
  */
-export async function fetchWidgetData(got, endpointUrl, widget, hl = 'en', proxyUrl = undefined, cookieHeader = '') {
+export async function fetchWidgetData(got, endpointUrl, widget, hl = 'en', proxyUrl = undefined, cookieOrJar = '', sessionToken = undefined, refererUrl = 'https://trends.google.com/trends/') {
     const searchParams = {
         hl,
         tz: '0',
@@ -213,33 +249,55 @@ export async function fetchWidgetData(got, endpointUrl, widget, hl = 'en', proxy
         token: widget.token,
     };
 
-    const headers = {
-        'accept': 'application/json, text/plain, */*',
-        'accept-language': `${hl},en-US;q=0.9,en;q=0.8`,
-        'referer': 'https://trends.google.com/trends/',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    };
-    if (cookieHeader) {
-        headers.cookie = cookieHeader;
+    const maxAttempts = 3;
+    let lastStatus = 0;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const headers = {
+            'accept': 'application/json, text/plain, */*',
+            'accept-language': `${hl},en-US;q=0.9,en;q=0.8`,
+            'referer': refererUrl,
+        };
+
+        const cookieHeader = formatCookieJar(cookieOrJar);
+        if (cookieHeader) {
+            headers.cookie = cookieHeader;
+        }
+
+        const options = {
+            headers,
+            searchParams,
+            timeout: { request: 20000 },
+            retry: { limit: 1 },
+            throwHttpErrors: false,
+        };
+
+        if (proxyUrl) options.proxyUrl = proxyUrl;
+        if (sessionToken) options.sessionToken = sessionToken;
+
+        const response = await got(endpointUrl, options);
+        lastStatus = response.statusCode;
+
+        if (cookieOrJar instanceof Map) {
+            updateCookieJar(cookieOrJar, response.headers?.['set-cookie']);
+        }
+
+        if (response.statusCode === 200) {
+            return parseGoogleTrendsJson(response.body);
+        }
+
+        if ((response.statusCode === 429 || response.statusCode >= 500) && attempt < maxAttempts) {
+            const delayMs = attempt === 1
+                ? 900 + Math.floor(Math.random() * 400)
+                : 2200 + Math.floor(Math.random() * 600);
+            await new Promise((r) => setTimeout(r, delayMs));
+            continue;
+        }
+
+        break;
     }
 
-    const options = {
-        headers,
-        searchParams,
-        timeout: { request: 20000 },
-        retry: { limit: 1 },
-        throwHttpErrors: false,
-    };
-
-    if (proxyUrl) {
-        options.proxyUrl = proxyUrl;
-    }
-
-    const response = await got(endpointUrl, options);
-    if (response.statusCode !== 200) {
-        throw new Error(`Widget endpoint returned HTTP ${response.statusCode}`);
-    }
-    return parseGoogleTrendsJson(response.body);
+    throw new Error(`Widget endpoint returned HTTP ${lastStatus}`);
 }
 
 /**
