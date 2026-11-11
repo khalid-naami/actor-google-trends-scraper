@@ -1,25 +1,18 @@
 {
-  "actorSpecification": 1,
-  "fields": {
-    "totalTerms": {
-      "type": "integer",
-      "title": "Total Search Terms"
-    },
-    "totalRecordsScraped": {
-      "type": "integer",
-      "title": "Total Trend Records Extracted"
-    },
-    "geo": {
+  "actorOutputSchemaVersion": 1,
+  "title": "Google Trends Scraper (Interest Over Time, Region & Related Queries) Output",
+  "properties": {
+    "results": {
       "type": "string",
-      "title": "Geographical Filter"
+      "title": "Dataset Records",
+      "description": "Scraped records stored in the default Apify dataset.",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
     },
-    "timeframe": {
+    "overview": {
       "type": "string",
-      "title": "Timeframe"
-    },
-    "status": {
-      "type": "string",
-      "title": "Run Status"
+      "title": "Executive Summary Payload",
+      "description": "High-level summary report and execution metrics stored in Key-Value store.",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/OUTPUT"
     }
   }
 }
