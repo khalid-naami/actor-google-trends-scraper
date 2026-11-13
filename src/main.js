@@ -120,7 +120,8 @@ async function scrapeTermViaPlaywright(term, normalizedGeo, timeframe, hl, proxy
 
             const rawTxt = await page.evaluate(
                 async ({ ep, lang, reqStr, tok }) => {
-                    const u = `${ep}?hl=${encodeURIComponent(lang)}&tz=0&req=${encodeURIComponent(reqStr)}&token=${encodeURIComponent(tok)}`;
+                    const qs = new URLSearchParams({ hl: lang, tz: '0', req: reqStr, token: tok }).toString();
+                    const u = `${ep}?${qs}`;
                     const r = await fetch(u);
                     return r.ok ? await r.text() : null;
                 },
@@ -232,9 +233,38 @@ async function extractWidgetsFromSession(term, sessionData, options) {
     };
 }
 
+function sanitizeRecord(value) {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : undefined;
+    }
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => sanitizeRecord(item))
+            .filter((item) => item !== null && item !== undefined);
+    }
+    if (typeof value === 'object' && !(value instanceof Date)) {
+        const clean = {};
+        for (const [k, v] of Object.entries(value)) {
+            const next = sanitizeRecord(v);
+            if (next !== null && next !== undefined) {
+                clean[k] = next;
+            }
+        }
+        return clean;
+    }
+    return value;
+}
+
+function isProxyTransportError(errOrStatus) {
+    const msg = String(errOrStatus?.message || errOrStatus || '');
+    return errOrStatus === 597 || errOrStatus === 407 || /597|UPSTREAM407|407|Proxy responded with|tunneling socket/i.test(msg);
+}
+
 await Actor.init();
 
 let hasFailed = false;
+const diagnostics = [];
 
 try {
     const input = (await Actor.getInput()) || {};
@@ -261,9 +291,16 @@ try {
     } else {
         log.info(`Starting Google Trends Scraper for ${searchTerms.length} terms (Geo input: "${geo || 'Worldwide'}" -> normalized: "${normalizedGeo || 'Worldwide'}", Timeframe: "${cleanTimeframe}")`);
 
-        const proxyConfig = proxyConfiguration ? await Actor.createProxyConfiguration(proxyConfiguration) : null;
-        if (proxyConfig) {
-            log.info('Apify Proxy configured successfully');
+        let proxyConfig = null;
+        if (proxyConfiguration) {
+            try {
+                proxyConfig = await Actor.createProxyConfiguration(proxyConfiguration);
+                if (proxyConfig) {
+                    log.info('Apify Proxy configured successfully');
+                }
+            } catch (proxyErr) {
+                log.warning(`Apify Proxy initialization skipped (${proxyErr.message}); falling back to direct connection.`);
+            }
         }
 
         const extractOptions = {
@@ -285,7 +322,7 @@ try {
 
                 for (let i = 0; i < modes.length; i++) {
                     const mode = modes[i];
-                    const attemptProxyUrl = mode === 'proxy' ? await proxyConfig.newUrl() : undefined;
+                    const attemptProxyUrl = mode === 'proxy' && proxyConfig ? await proxyConfig.newUrl() : undefined;
                     try {
                         const sessionData = await scrapeTermViaHttp(term, normalizedGeo, cleanTimeframe, cleanHl, attemptProxyUrl);
                         log.info(`Explore tokens retrieved via HTTP (${mode}, attempt ${i + 1}) for "${term}"`);
@@ -297,6 +334,10 @@ try {
                         break;
                     } catch (err) {
                         log.warning(`HTTP attempt ${i + 1} (${mode}) failed for "${term}": ${err.message}`);
+                        if (mode === 'proxy' && isProxyTransportError(err)) {
+                            log.warning('Proxy transport error detected; disabling broken proxy for subsequent requests.');
+                            proxyConfig = null;
+                        }
                     }
                 }
 
@@ -304,7 +345,7 @@ try {
                 if (!extracted) {
                     const pwModes = proxyConfig ? ['proxy', 'direct'] : ['direct'];
                     for (const pwMode of pwModes) {
-                        const fallbackProxy = pwMode === 'proxy' ? await proxyConfig.newUrl() : undefined;
+                        const fallbackProxy = pwMode === 'proxy' && proxyConfig ? await proxyConfig.newUrl() : undefined;
                         try {
                             log.info(`Switching to Playwright browser fallback (${pwMode}) for "${term}"...`);
                             const sessionData = await scrapeTermViaPlaywright(term, normalizedGeo, cleanTimeframe, cleanHl, fallbackProxy);
@@ -343,13 +384,14 @@ try {
                     scrapedAt: new Date().toISOString(),
                 };
 
-                await Actor.pushData(trendRecord);
+                await Actor.pushData(sanitizeRecord(trendRecord));
                 totalRecordsScraped++;
                 log.info(`Saved trend analysis for "${term}" successfully.`);
 
                 await new Promise((resolve) => setTimeout(resolve, 1500));
             } catch (err) {
                 log.error(`Failed to analyze term "${term}": ${err.message}`);
+                diagnostics.push(`${term}: ${err.message}`);
             }
         }
     }
@@ -359,12 +401,19 @@ try {
         totalRecordsScraped,
         geo: normalizedGeo || 'Worldwide',
         timeframe: cleanTimeframe,
-        status: 'SUCCEEDED',
+        diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
+        status: totalRecordsScraped > 0 ? 'SUCCEEDED' : 'FAILED',
         scrapedAt: new Date().toISOString(),
     };
 
     await Actor.setValue('OUTPUT', summary);
     log.info(`Trends scraping complete! Total terms analyzed: ${totalRecordsScraped}`);
+
+    if (totalRecordsScraped === 0) {
+        hasFailed = true;
+        const reason = diagnostics.length > 0 ? diagnostics.join('; ') : 'No Google Trends records could be extracted.';
+        await Actor.fail(`Extracted 0 Google Trends records. ${reason}`);
+    }
 } catch (err) {
     hasFailed = true;
     log.error(`Fatal execution error: ${err.message}`, { stack: err.stack });
