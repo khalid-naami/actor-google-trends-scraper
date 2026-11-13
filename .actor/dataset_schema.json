@@ -1,44 +1,142 @@
 {
-  "actorSpecification": 1,
-  "fields": {
-    "type": "object",
-    "properties": {
-      "term": {
-        "type": ["string", "null"],
-        "description": "Searched keyword or trend term"
-      },
-      "geo": {
-        "type": ["string", "null"],
-        "description": "Country or regional geographic scope"
-      },
-      "timeframe": {
-        "type": ["string", "null"],
-        "description": "Selected time range (e.g. today 12-m, now 7-d)"
-      },
-      "category": {
-        "type": ["integer", "null"],
-        "description": "Google Trends category ID"
-      },
-      "interestOverTime": {
-        "type": ["array", "null"],
-        "description": "Historical timeline of search volume interest scores (0-100)"
-      },
-      "interestByRegion": {
-        "type": ["array", "null"],
-        "description": "Geographical search interest distribution by region or country"
-      },
-      "relatedQueries": {
-        "type": ["object", "null"],
-        "description": "Top and Rising breakout related search queries"
-      },
-      "relatedTopics": {
-        "type": ["object", "null"],
-        "description": "Top and Rising breakout related entities and topics"
-      },
-      "scrapedAt": {
-        "type": ["string", "null"],
-        "description": "Timestamp of extraction"
-      }
+    "actorSpecification": 1,
+    "fields": {
+        "type": "object",
+        "properties": {
+            "term": {
+                "type": [
+                    "string",
+                    "null"
+                ],
+                "description": "Searched keyword or trend term"
+            },
+            "geo": {
+                "type": [
+                    "string",
+                    "null"
+                ],
+                "description": "Country or regional geographic scope"
+            },
+            "timeframe": {
+                "type": [
+                    "string",
+                    "null"
+                ],
+                "description": "Selected time range (e.g. today 12-m, now 7-d)"
+            },
+            "category": {
+                "type": [
+                    "integer",
+                    "null"
+                ],
+                "description": "Google Trends category ID"
+            },
+            "interestOverTime": {
+                "type": [
+                    "array",
+                    "null"
+                ],
+                "description": "Historical timeline of search volume interest scores (0-100)",
+                "items": {
+                    "type": "object",
+                    "required": [],
+                    "additionalProperties": true
+                }
+            },
+            "interestByRegion": {
+                "type": [
+                    "array",
+                    "null"
+                ],
+                "description": "Geographical search interest distribution by region or country",
+                "items": {
+                    "type": "object",
+                    "required": [],
+                    "additionalProperties": true
+                }
+            },
+            "relatedQueries": {
+                "type": [
+                    "object",
+                    "null"
+                ],
+                "description": "Top and Rising breakout related search queries",
+                "required": [],
+                "additionalProperties": true
+            },
+            "relatedTopics": {
+                "type": [
+                    "object",
+                    "null"
+                ],
+                "description": "Top and Rising breakout related entities and topics",
+                "required": [],
+                "additionalProperties": true
+            },
+            "scrapedAt": {
+                "type": [
+                    "string",
+                    "null"
+                ],
+                "description": "Timestamp of extraction"
+            }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": true,
+        "required": []
+    },
+    "views": {
+        "overview": {
+            "title": "Overview",
+            "transformation": {
+                "fields": [
+                    "term",
+                    "geo",
+                    "timeframe",
+                    "category",
+                    "interestOverTime",
+                    "interestByRegion",
+                    "relatedQueries",
+                    "relatedTopics"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "term": {
+                        "label": "term",
+                        "format": "text"
+                    },
+                    "geo": {
+                        "label": "geo",
+                        "format": "text"
+                    },
+                    "timeframe": {
+                        "label": "timeframe",
+                        "format": "text"
+                    },
+                    "category": {
+                        "label": "category",
+                        "format": "text"
+                    },
+                    "interestOverTime": {
+                        "label": "interestOverTime",
+                        "format": "text"
+                    },
+                    "interestByRegion": {
+                        "label": "interestByRegion",
+                        "format": "text"
+                    },
+                    "relatedQueries": {
+                        "label": "relatedQueries",
+                        "format": "text"
+                    },
+                    "relatedTopics": {
+                        "label": "relatedTopics",
+                        "format": "text"
+                    }
+                }
+            }
+        }
     }
-  }
 }
